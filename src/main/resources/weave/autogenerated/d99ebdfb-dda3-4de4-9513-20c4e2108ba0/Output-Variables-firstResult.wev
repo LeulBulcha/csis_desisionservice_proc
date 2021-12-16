@@ -1,0 +1,4 @@
+%dw 2.0
+
+type auto_d99ebdfb_dda3_4de4_9513_20c4e2108ba0_Output_Variables_firstResult = {| Temp: Any |}
+

@@ -1,0 +1,333 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+
+	<sub-flow name="csis_decisionservice-int-dev" doc:id="d99ebdfb-dda3-4de4-9513-20c4e2108ba0" >
+		<http:request method="GET" doc:name="call_covid-traking-api" doc:id="7ac53bbe-d270-4beb-9c2d-1ebae95011fb" config-ref="covid_Config" path="/countries" />
+		<ee:transform doc:name="Transform Messages" doc:id="04b14e85-b3f5-4db4-978a-23f484358ada" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+
+var topPayload = {
+    TopThreeCountries: (payload.data map ((value) -> {
+    	coordinates: value.coordinates,
+    	code: value.code,
+        country: value.name,
+        population: value.population,
+        deaths: value.latest_data.deaths,
+       	confirmed: value.latest_data.confirmed,
+        critical_case: value.latest_data.critical,
+        recovered: value.latest_data.recovered
+        
+    }) 
+    
+    filter $.deaths != null 
+    
+    orderBy $.deaths)[-1 to -3]
+    
+}
+---
+
+topPayload.TopThreeCountries 
+]]></ee:set-payload>
+			</ee:message>
+			<ee:variables />
+		</ee:transform>
+		<ee:transform doc:name="Prepare Request Message" doc:id="ef52f5e3-b3f9-4ede-b8dd-e155195df853" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload
+
+]]></ee:set-payload>
+			</ee:message>
+			<ee:variables>
+				<ee:set-variable variableName="covidInfo"><![CDATA[%dw 2.0
+output application/json
+var covidInfo = {
+		country: payload.country,
+        population: payload.population,
+        deaths: payload.deaths,
+        confirmed: payload.confirmed,
+        critical_case: payload.critical_case,
+        recovered: payload.recovered
+}
+---
+
+covidInfo 
+
+]]></ee:set-variable>
+				<ee:set-variable variableName="weatherUri"><![CDATA[%dw 2.0
+output application/json
+---
+payload.coordinates
+
+]]></ee:set-variable>
+				<ee:set-variable variableName="exchangeApi"><![CDATA[%dw 2.0
+output application/json
+
+var currencyCodeLookUp =readUrl("classpath://currencyCode.json","application/json")
+
+ 
+---
+
+payload map {
+	
+	currencyCode: currencyCodeLookUp[$.code]
+}]]></ee:set-variable>
+				<ee:set-variable variableName="countryApi"><![CDATA[%dw 2.0
+output application/json
+---
+payload.country]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<scatter-gather doc:name="Scatter-Gather" doc:id="0d987470-aa9d-4ce8-9479-dd42171a0f6a">
+			<route>
+				<parallel-foreach doc:name="Parallel For Each" doc:id="fd42a79b-3d59-49c1-83fe-f055652eb36f" collection="#[vars.weatherUri]">
+					<http:request method="GET" doc:name="call_weather_api" doc:id="2e60b468-7f83-4861-be2a-4f43352fe1ff" config-ref="weather_configuration" path="/onecall">
+						<http:query-params><![CDATA[#[output application/java
+---
+{
+	"appid" : Mule::p('secure::api.appid'),
+	"lat" : payload.latitude,
+	"lon" : payload.longitude,
+	"exclude" : "hourly,alerts,minutely,current",
+	"units" : "imperial"
+}]]]></http:query-params>
+					</http:request>
+				</parallel-foreach>
+				<ee:transform doc:name="Transform Message" doc:id="d2ec0424-31e0-4cc3-937e-f35b2aeb4bc9">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+
+var list = payload map $.payload
+
+var firstReslut = list.*daily map {
+	temp: $.temp.day
+	
+}
+
+
+---
+Temp:
+
+firstReslut reduce ($ ++ $$)
+
+pluck $]]></ee:set-payload>
+					</ee:message>
+					<ee:variables>
+						<ee:set-variable variableName="firstResult"><![CDATA[%dw 2.0
+output application/json
+
+var list = payload map $.payload
+
+var firstReslut = list[0].daily map {
+	temp: $.temp.day
+	
+}
+
+
+---
+
+{
+Temp:
+
+firstReslut reduce ($ ++ $$)
+
+pluck $
+
+}]]></ee:set-variable>
+						<ee:set-variable variableName="secondResult"><![CDATA[%dw 2.0
+output application/json
+
+var list = payload map $.payload
+
+var secondReslut = list[1].daily map {
+	temp: $.temp.day
+	
+}
+
+
+---
+Temp:
+
+secondReslut reduce ($ ++ $$)
+
+pluck $]]></ee:set-variable>
+						<ee:set-variable variableName="thirdResult"><![CDATA[%dw 2.0
+output application/json
+
+var list = payload map $.payload
+
+var thirdReslut = list[2].daily map {
+	temp: $.temp.day
+	
+}
+
+
+---
+Temp:
+
+thirdReslut reduce ($ ++ $$)
+
+pluck $]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</route>
+			<route>
+				<parallel-foreach doc:name="Parallel For Each" doc:id="7819c12f-7e61-4936-8615-4c6ee9e9ccb0" collection="#[vars.exchangeApi]">
+					<http:request method="GET" doc:name="call_excangerate_api" doc:id="973a759a-5d5e-4c12-96db-fdd749d981a1" config-ref="exchange_configuration" path="/USD">
+						<http:uri-params><![CDATA[#[output application/java
+---
+{
+	api : Mule::p('secure::api.api'),
+	base: payload.currencyCode
+}]]]></http:uri-params>
+					</http:request>
+					<logger level="INFO" doc:name="Logger" doc:id="8216e973-c2a8-4d3a-8d3c-ebbe2286581e" message="#[payload] ---- each batch" />
+				</parallel-foreach>
+				<ee:transform doc:name="Transform Message" doc:id="872ac37f-23db-449e-b6a9-d823221b12ec">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload map $.payload ]]></ee:set-payload>
+					</ee:message>
+					<ee:variables >
+						<ee:set-variable variableName="excResult" ><![CDATA[%dw 2.0
+output application/json
+
+var stageResult = payload map $.payload
+
+var excResult = stageResult map {
+	conversion_rate: $.conversion_rate ++ " USD"
+}
+---
+excResult[0]]]></ee:set-variable>
+						<ee:set-variable variableName="excResult1" ><![CDATA[%dw 2.0
+output application/json
+
+var stageResult = payload map $.payload
+
+var excResult = stageResult map {
+	conversion_rate: $.conversion_rate ++ " USD"
+}
+---
+excResult[1]]]></ee:set-variable>
+						<ee:set-variable variableName="excResult2" ><![CDATA[%dw 2.0
+output application/json
+
+var stageResult = payload map $.payload
+
+var excResult = stageResult map {
+	conversion_rate: $.conversion_rate ++ " USD"
+}
+---
+excResult[2]]]></ee:set-variable>
+					</ee:variables>
+				</ee:transform>
+			</route>
+			<route >
+				<parallel-foreach doc:name="Parallel For Each" doc:id="98960d58-0b1f-4445-ba6d-f7c3e276648c" collection="#[vars.countryApi]">
+						<http:request method="GET" doc:name="call_region_api" doc:id="9843b518-480c-4ba8-8b77-99b07adf4f62" config-ref="region_Config" path="/countries">
+							<http:query-params><![CDATA[#[output application/java
+---
+{
+	"q" : payload
+}]]]></http:query-params>
+						</http:request>
+						<logger level="INFO" doc:name="Logger" doc:id="40775369-73b8-4bde-b93f-3adf57b95189" message="#[payload]" />
+					</parallel-foreach>
+				<ee:transform doc:name="Transform Message" doc:id="d050e7a8-9813-4648-87de-7ac4df365dac">
+						<ee:message>
+							<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+payload map $.payload]]></ee:set-payload>
+						</ee:message>
+						<ee:variables>
+							<ee:set-variable variableName="regionRes"><![CDATA[%dw 2.0
+output application/json
+
+var regionRes = payload map $.payload.data[0]
+
+---
+region: regionRes.region[0]]]></ee:set-variable>
+							<ee:set-variable variableName="regionRes1"><![CDATA[%dw 2.0
+output application/json
+
+var regionRes = payload map $.payload.data[0]
+
+---
+region: regionRes.region[1]]]></ee:set-variable>
+							<ee:set-variable variableName="regionRes2"><![CDATA[%dw 2.0
+output application/json
+
+var regionRes = payload map $.payload.data[0]
+
+---
+region: regionRes.region[2]]]></ee:set-variable>
+						</ee:variables>
+					</ee:transform>
+			</route>
+		</scatter-gather>
+		<ee:transform doc:name="Transform Message" doc:id="b451b6d2-76b4-4319-b29d-3e9a34adb114">
+			<ee:message>
+				<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+var firstInfo =[vars.covidInfo ++ vars.regionRes ++ vars.excResult ++ vars.firstResult]
+var secInfo = [vars.covidInfo  ++ vars.regionRes1 ++ vars.excResult1 ++ vars.secondResult]
+var thirdInfo = [vars.covidInfo ++ vars.regionRes2 ++ vars.excResult2 ++ vars.thirdResult]
+---
+flatten([
+	
+firstInfo map {
+	country: $.country[0],
+	region: $.region,
+	population:$.population[0],
+	deaths:$.deaths[0],
+	confirmed: $.confirmed[0],
+	critical_case: $.critical_case[0],
+	recovered: $.recovered[0],
+	conversion_rate: $.conversion_rate,
+	Weather: $.Temp
+},
+secInfo map {
+	country: $.country[1],
+	region: $.region,
+	population:$.population[1],
+	deaths:$.deaths[1],
+	confirmed: $.confirmed[1],
+	critical_case: $.critical_case[1],
+	recovered: $.recovered[1],
+	conversion_rate: $.conversion_rate,
+	Weather: $.Temp
+},
+thirdInfo map 
+	{
+	country: $.country[2],
+	region: $.region,
+	population:$.population[2],
+	deaths:$.deaths[2],
+	confirmed: $.confirmed[2],
+	critical_case: $.critical_case[2],
+	recovered: $.recovered[2],
+	conversion_rate: $.conversion_rate,
+	Weather: $.Temp
+}
+]
+)groupBy (item) -> item.country
+]]></ee:set-payload>
+			</ee:message>
+			<ee:variables>
+			</ee:variables>
+		</ee:transform>
+	</sub-flow>
+</mule>

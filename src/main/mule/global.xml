@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:secure-properties="http://www.mulesoft.org/schema/mule/secure-properties"
+	xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="
+http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd 
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/secure-properties http://www.mulesoft.org/schema/mule/secure-properties/current/mule-secure-properties.xsd">
+<http:request-config name="covid_Config" doc:name="HTTP Request configuration" doc:id="2d4b3ee4-4673-48e2-8591-6a2f17c928de" >
+		<http:request-connection protocol="HTTPS" host="corona-api.com" />
+	</http:request-config>
+	 <http:listener-config name="craft-decision-service-api-httpListenerConfig">
+        <http:listener-connection host="${http.host}" port="${http.port}" />
+    </http:listener-config>
+    <apikit:config name="craft-decision-service-api-config" api="resource::b61a6aca-c47c-4e5f-96e3-8e39eed3209d:craft-decision-service-api:1.0.1:raml:zip:craft-decision-service-api.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
+    <http:request-config name="region_Config" doc:name="HTTP Request configuration" doc:id="ee72a970-85cd-4496-b863-feda0b14dab6" basePath="/data/v1">
+        <http:request-connection protocol="HTTPS" host="api.first.org" />
+    </http:request-config>
+    <http:request-config name="exchange_configuration" doc:name="HTTP Request configuration" doc:id="d51ac196-a893-4cdd-b4ac-e4e7362c5f93" basePath="/v6/{api}/pair/{base}">
+        <http:request-connection host="v6.exchangerate-api.com" />
+    </http:request-config>
+    <http:request-config name="weather_configuration" doc:name="HTTP Request configuration" doc:id="5c405437-61cc-48ed-b88f-2ace25ebe329" basePath="/data/2.5">
+        <http:request-connection host="api.openweathermap.org" protocol="HTTPS" />
+    </http:request-config>
+	<secure-properties:config name="ApiKey_Secure_Properties__Config" doc:name="Secure Properties Config" doc:id="32255712-54ba-4008-8a1f-a6be0aa5f582" file="apikey1.yaml" key="mulesoft" >
+		<secure-properties:encrypt algorithm="Blowfish" useRandomIVs="true"/>
+	</secure-properties:config>
+	<configuration-properties doc:name="Configuration properties" doc:id="a8b76a8c-e410-415e-83f3-86ba4d66a7cb" file="${env}.yaml" />
+
+
+</mule>

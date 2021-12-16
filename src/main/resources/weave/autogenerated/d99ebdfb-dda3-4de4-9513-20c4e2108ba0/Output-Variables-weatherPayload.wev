@@ -1,0 +1,34 @@
+%dw 2.0
+
+type auto_d99ebdfb_dda3_4de4_9513_20c4e2108ba0_Output_Variables_weatherPayload = {|
+  "0": org_mule_runtime_api_message_Message, 
+  "1": org_mule_runtime_api_message_Message_3, 
+  "2": org_mule_runtime_api_message_Message_7
+|}
+type org_mule_runtime_api_message_Message_7 = {|
+  payload: Null, 
+  attributes: org_mule_extension_http_api_HttpResponseAttributes
+|} {"typeId": "org.mule.runtime.api.message.Message"}
+type org_mule_extension_http_api_HttpResponseAttributes = {|
+  statusCode: Number, 
+  reasonPhrase: String, 
+  headers: { _?: String }
+|} {"typeAlias": "HttpResponseAttributes",
+"typeId": "org.mule.extension.http.api.HttpResponseAttributes"}
+
+
+
+
+type org_mule_runtime_api_message_Message_3 = {|
+  payload: Array<Any>, 
+  attributes: Null
+|} {"typeId": "org.mule.runtime.api.message.Message"}
+
+
+type org_mule_runtime_api_message_Message = {|
+  payload: {| Temp: Any |}, 
+  attributes: Null
+|} {"typeId": "org.mule.runtime.api.message.Message"}
+
+
+
